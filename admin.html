@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battleverse Admin Pro v2.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+    <style>
+        body {
+            background-color: #030712;
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            color: #ffffff;
+            padding-bottom: 50px;
+        }
+
+        .glass-card {
+            background: rgba(10, 16, 31, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .btn-glow {
+            background: linear-gradient(90deg, #0284c7 0%, #2563eb 100%);
+            box-shadow: 0 0 12px rgba(2, 132, 199, 0.4);
+        }
+
+        .tab-btn.active {
+            border-bottom: 2px solid #38bdf8;
+            color: #38bdf8;
+        }
+    </style>
+</head>
+<body class="max-w-md mx-auto min-h-screen relative select-none">
+
+    <!-- Admin Header -->
+    <div class="sticky top-0 z-40 p-4 flex items-center justify-between backdrop-blur-md bg-slate-950/90 border-b border-rose-500/40">
+        <div class="flex items-center space-x-2">
+            <div class="w-8 h-8 rounded-lg bg-rose-500/20 text-rose-400 flex items-center justify-center font-black">
+                <i class="fa-solid fa-shield-halved text-sm"></i>
+            </div>
+            <div>
+                <h1 class="text-xs font-black uppercase tracking-widest text-rose-400">ADMIN CONTROL PRO</h1>
+                <p class="text-[9px] text-slate-400 uppercase">v2.0 Automation System</p>
+            </div>
+        </div>
+        <button onclick="window.location.reload()" class="text-xs font-bold bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700">
+            <i class="fa-solid fa-rotate-right mr-1"></i> Refresh
+        </button>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="flex border-b border-slate-800 bg-slate-950/60 sticky top-[65px] z-30">
+        <button onclick="switchTab('matches')" id="tab-matches" class="tab-btn active flex-1 py-3 text-[10px] font-black uppercase text-center text-slate-400">Matches & Prizes</button>
+        <button onclick="switchTab('payments')" id="tab-payments" class="tab-btn flex-1 py-3 text-[10px] font-black uppercase text-center text-slate-400">Deposits & Cashout</button>
+        <button onclick="switchTab('users')" id="tab-users" class="tab-btn flex-1 py-3 text-[10px] font-black uppercase text-center text-slate-400">Players Manager</button>
+    </div>
+
+    <!-- TAB 1: MATCHES & PRIZE AUTOMATION -->
+    <div id="section-matches" class="p-4 space-y-4">
+        
+        <!-- Room Credentials Update -->
+        <div class="glass-card rounded-2xl p-4 border border-sky-500/30">
+            <h4 class="text-xs font-black uppercase tracking-wider text-sky-400 mb-3"><i class="fa-solid fa-key mr-1"></i> Room ID / Password Update</h4>
+            <select id="selectMatchRoom" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs font-bold text-white mb-2">
+                <option value="">Loading Active Matches...</option>
+            </select>
+            <div class="grid grid-cols-2 gap-2 mb-3">
+                <input id="inputRoomId" type="text" placeholder="Room ID" class="bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs font-bold text-white">
+                <input id="inputRoomPass" type="text" placeholder="Password" class="bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs font-bold text-white">
+            </div>
+            <button onclick="publishRoomDetails()" class="w-full btn-glow text-white font-black py-2 rounded-xl text-xs uppercase">Publish Room Info</button>
+        </div>
+
+        <!-- Automated Prize Distribution -->
+        <div class="glass-card rounded-2xl p-4 border border-emerald-500/30">
+            <h4 class="text-xs font-black uppercase tracking-wider text-emerald-400 mb-3"><i class="fa-solid fa-trophy mr-1"></i> Result & Auto-Prize Disburser</h4>
+            
+            <p class="text-[10px] text-slate-400 mb-1">SELECT WINNER'S UID</p>
+            <input id="prizeUserUid" type="text" placeholder="Paste Player User UID" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs font-bold text-white mb-2">
+            
+            <div class="grid grid-cols-2 gap-2 mb-3">
+                <div>
+                    <p class="text-[10px] text-slate-400 mb-1">KILLS COUNT</p>
+                    <input id="prizeKills" type="number" placeholder="e.g. 5" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs font-bold text-white">
+                </div>
+                <div>
+                    <p class="text-[10px] text-slate-400 mb-1">WINNING PRIZE (₹)</p>
+                    <input id="prizeAmount" type="number" placeholder="e.g. 150" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs font-bold text-white">
+                </div>
+            </div>
+
+            <button onclick="distributePrize()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2.5 rounded-xl text-xs uppercase tracking-wider border border-emerald-400">
+                SEND PRIZE TO WALLET
+            </button>
+        </div>
+    </div>
+
+    <!-- TAB 2: PAYMENTS (DEPOSITS & WITHDRAWALS) -->
+    <div id="section-payments" class="p-4 space-y-4 hidden">
+        <h4 class="text-xs font-black uppercase tracking-wider text-amber-400 mb-2">PENDING TRANSACTION QUEUE</h4>
+        <div id="paymentQueueContainer" class="space-y-2">
+            <p class="text-xs text-slate-500 text-center py-4">Fetching payment queue...</p>
+        </div>
+    </div>
+
+    <!-- TAB 3: USER MANAGER -->
+    <div id="section-users" class="p-4 space-y-4 hidden">
+        <div class="glass-card rounded-2xl p-4 border border-purple-500/30">
+            <h4 class="text-xs font-black uppercase tracking-wider text-purple-400 mb-2"><i class="fa-solid fa-users mr-1"></i> Player Lookup & Balance Control</h4>
+            <input id="searchUserUid" type="text" placeholder="Enter Player UID" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs font-bold text-white mb-2">
+            <button onclick="searchPlayer()" class="w-full bg-purple-600 text-white font-black py-2 rounded-xl text-xs uppercase">SEARCH PLAYER</button>
+        </div>
+
+        <div id="playerDetailsCard" class="hidden glass-card rounded-2xl p-4 border border-slate-700 space-y-2">
+            <h5 id="searchedName" class="text-xs font-black text-white">Player Name</h5>
+            <p id="searchedEmail" class="text-[10px] text-slate-400">Email</p>
+            <div class="flex justify-between items-center bg-slate-900 p-2 rounded-lg">
+                <span class="text-xs text-slate-300">Wallet Balance:</span>
+                <span id="searchedBalance" class="text-xs font-black text-emerald-400">₹ 0.00</span>
+            </div>
+            <div class="flex space-x-2 pt-2">
+                <button onclick="adjustBalance(50)" class="flex-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] font-bold py-1.5 rounded-lg">+ ₹50</button>
+                <button onclick="adjustBalance(-50)" class="flex-1 bg-rose-500/20 text-rose-400 border border-rose-500/40 text-[10px] font-bold py-1.5 rounded-lg">- ₹50</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+          apiKey: "AIzaSyAkLFHPLGfOd2DGllNf1NPeCRvUAp_0Ub8",
+          authDomain: "battleverse-654a9.firebaseapp.com",
+          databaseURL: "https://battleverse-654a9-default-rtdb.firebaseio.com",
+          projectId: "battleverse-654a9",
+          storageBucket: "battleverse-654a9.firebasestorage.app",
+          messagingSenderId: "239951246531",
+          appId: "1:239951246531:web:34ceafddea87a8d185de76"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const db = firebase.database();
+        let selectedSearchedUid = null;
+
+        function switchTab(tab) {
+            ['matches', 'payments', 'users'].forEach(t => {
+                document.getElementById('section-' + t).classList.add('hidden');
+                document.getElementById('tab-' + t).classList.remove('active');
+            });
+            document.getElementById('section-' + tab).classList.remove('hidden');
+            document.getElementById('tab-' + tab).classList.add('active');
+        }
+
+        // Load Active Matches
+        db.ref('tournaments').on('value', (snap) => {
+            const matches = snap.val();
+            const select = document.getElementById('selectMatchRoom');
+            select.innerHTML = '<option value="">-- Choose Match --</option>';
+            if (matches) {
+                Object.keys(matches).forEach((key) => {
+                    select.innerHTML += `<option value="${key}">${matches[key].title} (${matches[key].game})</option>`;
+                });
+            }
+        });
+
+        function publishRoomDetails() {
+            const matchId = document.getElementById('selectMatchRoom').value;
+            const roomId = document.getElementById('inputRoomId').value.trim();
+            const roomPass = document.getElementById('inputRoomPass').value.trim();
+
+            if (!matchId || !roomId) { alert('Match aur Room ID select karein!'); return; }
+
+            db.ref('tournaments/' + matchId).update({ roomId, roomPass }).then(() => {
+                alert('Room Info publish ho gaya!');
+            });
+        }
+
+        // Send Auto Prize Money
+        function distributePrize() {
+            const uid = document.getElementById('prizeUserUid').value.trim();
+            const kills = parseInt(document.getElementById('prizeKills').value) || 0;
+            const amount = parseFloat(document.getElementById('prizeAmount').value);
+
+            if (!uid || !amount) { alert('User UID aur Prize Amount add karein!'); return; }
+
+            // Add Balance & Record Victory Transaction
+            db.ref('users/' + uid).transaction((user) => {
+                if (user) {
+                    user.wallet = (user.wallet || 0) + amount;
+                    user.matchesWon = (user.matchesWon || 0) + 1;
+                    user.totalKills = (user.totalKills || 0) + kills;
+                }
+                return user;
+            }).then(() => {
+                db.ref('transactions/' + uid).push({
+                    type: 'win',
+                    title: 'Match Prize Money',
+                    amount: amount,
+                    date: new Date().toLocaleTimeString()
+                });
+                alert('Prize Money Successful Send Ho Gaya!');
+            });
+        }
+
+        // Load Payments
+        db.ref('transactions').on('value', (snap) => {
+            const container = document.getElementById('paymentQueueContainer');
+            container.innerHTML = '';
+            const txns = snap.val();
+            let found = false;
+
+            if (txns) {
+                Object.keys(txns).forEach(uid => {
+                    Object.keys(txns[uid]).forEach(txnId => {
+                        const t = txns[uid][txnId];
+                        if (t.status === 'pending') {
+                            found = true;
+                            container.innerHTML += `
+                                <div class="glass-card rounded-xl p-3 border border-slate-800">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <h5 class="text-xs font-bold text-white">${t.title}</h5>
+                                            <span class="text-[9px] text-slate-400 block">UID: ${uid.substring(0,10)}...</span>
+                                        </div>
+                                        <span class="text-xs font-black ${t.type === 'deposit' ? 'text-emerald-400' : 'text-rose-400'}">₹ ${t.amount}</span>
+                                    </div>
+                                    <div class="flex space-x-2 mt-2">
+                                        <button onclick="handleTxn('${uid}', '${txnId}', 'approved', ${t.amount}, '${t.type}')" class="flex-1 bg-emerald-600 text-white text-[10px] font-bold py-1 rounded-lg">APPROVE</button>
+                                        <button onclick="handleTxn('${uid}', '${txnId}', 'rejected', ${t.amount}, '${t.type}')" class="flex-1 bg-rose-600 text-white text-[10px] font-bold py-1 rounded-lg">REJECT</button>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    });
+                });
+            }
+            if (!found) container.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">Koi Pending Payment Nahi Hai.</p>';
+        });
+
+        function handleTxn(uid, txnId, status, amount, type) {
+            db.ref('transactions/' + uid + '/' + txnId).update({ status });
+            if (status === 'approved' && type === 'deposit') {
+                db.ref('users/' + uid + '/wallet').transaction(w => (w || 0) + amount);
+            } else if (status === 'rejected' && type === 'withdraw') {
+                db.ref('users/' + uid + '/wallet').transaction(w => (w || 0) + amount); // Refund
+            }
+            alert('Status update ho gaya!');
+        }
+
+        // Search Player
+        function searchPlayer() {
+            const uid = document.getElementById('searchUserUid').value.trim();
+            if(!uid) return;
+            selectedSearchedUid = uid;
+
+            db.ref('users/' + uid).once('value', snap => {
+                const u = snap.val();
+                if(u) {
+                    document.getElementById('playerDetailsCard').classList.remove('hidden');
+                    document.getElementById('searchedName').innerText = u.name || u.gameName || 'Player';
+                    document.getElementById('searchedEmail').innerText = u.email || 'No Email';
+                    document.getElementById('searchedBalance').innerText = '₹ ' + (u.wallet || 0).toFixed(2);
+                } else {
+                    alert('User nahi mila!');
+                }
+            });
+        }
+
+        function adjustBalance(val) {
+            if(!selectedSearchedUid) return;
+            db.ref('users/' + selectedSearchedUid + '/wallet').transaction(w => (w || 0) + val).then(() => {
+                searchPlayer();
+            });
+        }// 1. Room ID & Password Update Function
+function publishRoomDetails() {
+    const matchId = document.getElementById('matchSelect').value;
+    const roomId = document.getElementById('roomId').value;
+    const roomPass = document.getElementById('roomPass').value;
+
+    if (!roomId || !roomPass) {
+        alert("Kripya Room ID aur Password dono bharein!");
+        return;
+    }
+
+    // Realtime Database me match update
+    db.ref('matches/' + matchId).update({
+        roomId: roomId,
+        roomPassword: roomPass,
+        updatedAt: Date.now()
+    }).then(() => {
+        alert(matchId + " ki Room Details publish ho gayi!");
+        document.getElementById('roomId').value = '';
+        document.getElementById('roomPass').value = '';
+    }).catch((err) => {
+        alert("Error: " + err.message);
+    });
+}
+
+// 2. Direct UID se Balance Add Karne Ka Function
+function updateUserCoins() {
+    const uid = document.getElementById('playerUid').value.trim();
+    const amount = parseFloat(document.getElementById('addCoins').value);
+
+    if (!uid || isNaN(amount)) {
+        alert("Kripya sahi Player UID aur Amount daalein!");
+        return;
+    }
+
+    // Realtime Database me transaction
+    db.ref('users/' + uid + '/wallet').transaction((w) => {
+        return (w || 0) + amount;
+    }).then(() => {
+        alert("UID: " + uid + " me ₹" + amount + " add ho gaye!");
+        document.getElementById('playerUid').value = '';
+        document.getElementById('addCoins').value = '';
+    }).catch((err) => {
+        alert("Error: " + err.message);
+    });
+}
+    </script>
+</body>
+<!-- Admin Security Overlay -->
+<div id="adminAuthOverlay" class="fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center p-6">
+    <div class="w-full max-w-xs glass-card rounded-2xl p-5 border border-rose-500/40 text-center">
+        <i class="fa-solid fa-lock text-rose-400 text-3xl mb-3 animate-pulse"></i>
+        <h2 class="text-xs font-black uppercase text-rose-400 tracking-widest mb-1">ADMIN ACCESS ONLY</h2>
+        <p class="text-[10px] text-slate-400 mb-4">Enter Secret Password to Access Panel</p>
+        
+        <input id="adminSecretKey" type="password" placeholder="Enter Secret Password" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white text-center mb-3">
+        <button onclick="unlockAdminPanel()" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-black py-2.5 rounded-xl text-xs uppercase tracking-wider">LOGIN</button>
+    </div>
+</div>
+<script>
+    function unlockAdminPanel() {
+        const pass = document.getElementById('adminSecretKey').value;
+        if (pass === "Battleverse@123") { // <-- Yahan apna secret password rakhein
+            document.getElementById('adminAuthOverlay').classList.add('hidden');
+        } else {
+            alert("Wrong Password! Access Denied.");
+        }
+    }
+</script>
+</html>
