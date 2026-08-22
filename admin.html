@@ -40,6 +40,18 @@
 </head>
 <body class="max-w-md mx-auto min-h-screen relative select-none">
 
+    <!-- Admin Security Overlay (PASSWORD LOCK) -->
+    <div id="adminAuthOverlay" class="fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center p-6">
+        <div class="w-full max-w-xs glass-card rounded-2xl p-5 border border-rose-500/40 text-center">
+            <i class="fa-solid fa-lock text-rose-400 text-3xl mb-3 animate-pulse"></i>
+            <h2 class="text-xs font-black uppercase text-rose-400 tracking-widest mb-1">ADMIN ACCESS ONLY</h2>
+            <p class="text-[10px] text-slate-400 mb-4">Enter Secret Password to Access Panel</p>
+            
+            <input id="adminSecretKey" type="password" placeholder="Enter Secret Password" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white text-center mb-3">
+            <button onclick="unlockAdminPanel()" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-black py-2.5 rounded-xl text-xs uppercase tracking-wider">LOGIN</button>
+        </div>
+    </div>
+
     <!-- Admin Header -->
     <div class="sticky top-0 z-40 p-4 flex items-center justify-between backdrop-blur-md bg-slate-950/90 border-b border-rose-500/40">
         <div class="flex items-center space-x-2">
@@ -150,6 +162,16 @@
         const db = firebase.database();
         let selectedSearchedUid = null;
 
+        // Password Unlock
+        function unlockAdminPanel() {
+            const pass = document.getElementById('adminSecretKey').value;
+            if (pass === "Battleverse@123") {
+                document.getElementById('adminAuthOverlay').classList.add('hidden');
+            } else {
+                alert("Wrong Password! Access Denied.");
+            }
+        }
+
         function switchTab(tab) {
             ['matches', 'payments', 'users'].forEach(t => {
                 document.getElementById('section-' + t).classList.add('hidden');
@@ -166,11 +188,12 @@
             select.innerHTML = '<option value="">-- Choose Match --</option>';
             if (matches) {
                 Object.keys(matches).forEach((key) => {
-                    select.innerHTML += `<option value="${key}">${matches[key].title} (${matches[key].game})</option>`;
+                    select.innerHTML += `<option value="${key}">${matches[key].title || 'Match'} (${matches[key].game || 'Game'})</option>`;
                 });
             }
         });
 
+        // Publish Room Info
         function publishRoomDetails() {
             const matchId = document.getElementById('selectMatchRoom').value;
             const roomId = document.getElementById('inputRoomId').value.trim();
@@ -178,9 +201,15 @@
 
             if (!matchId || !roomId) { alert('Match aur Room ID select karein!'); return; }
 
-            db.ref('tournaments/' + matchId).update({ roomId, roomPass }).then(() => {
+            db.ref('tournaments/' + matchId).update({ 
+                roomId: roomId, 
+                roomPass: roomPass,
+                updatedAt: Date.now()
+            }).then(() => {
                 alert('Room Info publish ho gaya!');
-            });
+                document.getElementById('inputRoomId').value = '';
+                document.getElementById('inputRoomPass').value = '';
+            }).catch(err => alert("Error: " + err.message));
         }
 
         // Send Auto Prize Money
@@ -191,7 +220,6 @@
 
             if (!uid || !amount) { alert('User UID aur Prize Amount add karein!'); return; }
 
-            // Add Balance & Record Victory Transaction
             db.ref('users/' + uid).transaction((user) => {
                 if (user) {
                     user.wallet = (user.wallet || 0) + amount;
@@ -207,7 +235,10 @@
                     date: new Date().toLocaleTimeString()
                 });
                 alert('Prize Money Successful Send Ho Gaya!');
-            });
+                document.getElementById('prizeUserUid').value = '';
+                document.getElementById('prizeKills').value = '';
+                document.getElementById('prizeAmount').value = '';
+            }).catch(err => alert("Error: " + err.message));
         }
 
         // Load Payments
@@ -227,7 +258,7 @@
                                 <div class="glass-card rounded-xl p-3 border border-slate-800">
                                     <div class="flex justify-between items-start">
                                         <div>
-                                            <h5 class="text-xs font-bold text-white">${t.title}</h5>
+                                            <h5 class="text-xs font-bold text-white">${t.title || 'Transaction'}</h5>
                                             <span class="text-[9px] text-slate-400 block">UID: ${uid.substring(0,10)}...</span>
                                         </div>
                                         <span class="text-xs font-black ${t.type === 'deposit' ? 'text-emerald-400' : 'text-rose-400'}">₹ ${t.amount}</span>
@@ -250,7 +281,7 @@
             if (status === 'approved' && type === 'deposit') {
                 db.ref('users/' + uid + '/wallet').transaction(w => (w || 0) + amount);
             } else if (status === 'rejected' && type === 'withdraw') {
-                db.ref('users/' + uid + '/wallet').transaction(w => (w || 0) + amount); // Refund
+                db.ref('users/' + uid + '/wallet').transaction(w => (w || 0) + amount);
             }
             alert('Status update ho gaya!');
         }
@@ -279,73 +310,7 @@
             db.ref('users/' + selectedSearchedUid + '/wallet').transaction(w => (w || 0) + val).then(() => {
                 searchPlayer();
             });
-        }// 1. Room ID & Password Update Function
-function publishRoomDetails() {
-    const matchId = document.getElementById('matchSelect').value;
-    const roomId = document.getElementById('roomId').value;
-    const roomPass = document.getElementById('roomPass').value;
-
-    if (!roomId || !roomPass) {
-        alert("Kripya Room ID aur Password dono bharein!");
-        return;
-    }
-
-    // Realtime Database me match update
-    db.ref('matches/' + matchId).update({
-        roomId: roomId,
-        roomPassword: roomPass,
-        updatedAt: Date.now()
-    }).then(() => {
-        alert(matchId + " ki Room Details publish ho gayi!");
-        document.getElementById('roomId').value = '';
-        document.getElementById('roomPass').value = '';
-    }).catch((err) => {
-        alert("Error: " + err.message);
-    });
-}
-
-// 2. Direct UID se Balance Add Karne Ka Function
-function updateUserCoins() {
-    const uid = document.getElementById('playerUid').value.trim();
-    const amount = parseFloat(document.getElementById('addCoins').value);
-
-    if (!uid || isNaN(amount)) {
-        alert("Kripya sahi Player UID aur Amount daalein!");
-        return;
-    }
-
-    // Realtime Database me transaction
-    db.ref('users/' + uid + '/wallet').transaction((w) => {
-        return (w || 0) + amount;
-    }).then(() => {
-        alert("UID: " + uid + " me ₹" + amount + " add ho gaye!");
-        document.getElementById('playerUid').value = '';
-        document.getElementById('addCoins').value = '';
-    }).catch((err) => {
-        alert("Error: " + err.message);
-    });
-}
+        }
     </script>
 </body>
-<!-- Admin Security Overlay -->
-<div id="adminAuthOverlay" class="fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center p-6">
-    <div class="w-full max-w-xs glass-card rounded-2xl p-5 border border-rose-500/40 text-center">
-        <i class="fa-solid fa-lock text-rose-400 text-3xl mb-3 animate-pulse"></i>
-        <h2 class="text-xs font-black uppercase text-rose-400 tracking-widest mb-1">ADMIN ACCESS ONLY</h2>
-        <p class="text-[10px] text-slate-400 mb-4">Enter Secret Password to Access Panel</p>
-        
-        <input id="adminSecretKey" type="password" placeholder="Enter Secret Password" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-xs text-white text-center mb-3">
-        <button onclick="unlockAdminPanel()" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-black py-2.5 rounded-xl text-xs uppercase tracking-wider">LOGIN</button>
-    </div>
-</div>
-<script>
-    function unlockAdminPanel() {
-        const pass = document.getElementById('adminSecretKey').value;
-        if (pass === "Battleverse@123") { // <-- Yahan apna secret password rakhein
-            document.getElementById('adminAuthOverlay').classList.add('hidden');
-        } else {
-            alert("Wrong Password! Access Denied.");
-        }
-    }
-</script>
 </html>
